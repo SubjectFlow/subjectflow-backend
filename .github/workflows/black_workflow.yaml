@@ -1,8 +1,8 @@
-name: Black Python Formatter
-on: [push, pull_request]
+name: Code Formatting
+on: [ pull_request ]
 jobs:
   linter_name:
-    name: runner / black formatter
+    name: python / black formatter
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
