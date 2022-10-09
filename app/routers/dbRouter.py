@@ -11,7 +11,7 @@ class SubjectCode(BaseModel):
 
 
 @router.post(
-    "/getsubject",
+    "/get-subject",
     response_description="Get a subject object",
     status_code=status.HTTP_200_OK,
     response_model=Subject,
