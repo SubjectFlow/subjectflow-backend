@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "subjectflow_backend"}]
 
 [tool.poetry.scripts]
-server = { callable = "subjectflow_backend.main:app", extras = ["uvicorn"] }
+server = 'scripts:server'
 
 [tool.poetry.dependencies]
 python = "^3.10"
