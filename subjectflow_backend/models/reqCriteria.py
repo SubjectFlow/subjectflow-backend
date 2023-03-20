@@ -1,8 +1,8 @@
 import uuid
 from typing import Optional, List, Tuple
 from pydantic import BaseModel, Field
+from subject import Subject
 
 
-class Subject(BaseModel):
-    name: str = Field()
-    code: str = Field()
+class ReqCriteria(BaseModel):
+    criterion: Tuple[str, Subject]
