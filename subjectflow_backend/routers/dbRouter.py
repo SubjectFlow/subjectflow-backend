@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Body, Request, Response, HTTPException, status
 from fastapi.encoders import jsonable_encoder
-from app.models.subjectModel import Subject
+from subjectflow_backend.models.subjectModel import Subject
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/db")

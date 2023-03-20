@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from dotenv import dotenv_values
 from pymongo import MongoClient
 
-from app.routers import dbRouter
+from subjectflow_backend.routers import dbRouter
 
 config = dotenv_values(".env")
 
