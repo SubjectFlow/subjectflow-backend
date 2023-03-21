@@ -7,5 +7,5 @@ client = TestClient(app)
 
 
 def test_get_subject():
-    response = client.post("/db/get-subject")
+    response = client.post("/db/subject")
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
