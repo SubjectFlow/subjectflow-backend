@@ -8,6 +8,7 @@ packages = [{include = "subjectflow_backend"}]
 
 [tool.poetry.scripts]
 server = 'scripts:server'
+scrape = 'subjectflow_backend.scraper.scraper:scrape'
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -16,6 +17,7 @@ pydantic = "^1.10.6"
 fastapi = {extras = ["all"], version = "^0.95.0"}
 requests = "^2.28.2"
 python-dotenv = "^1.0.0"
+selenium = "^4.8.2"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"

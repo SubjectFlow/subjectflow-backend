@@ -1,6 +1,9 @@
 .idea*
 .vscode*
 
+# scraper screenshots
+screenshots
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
