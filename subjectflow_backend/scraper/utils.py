@@ -18,3 +18,8 @@ def closeTab(driver: webdriver):
 
 def switchTab(driver: webdriver, windowIdx: int):
     driver.switch_to.window(driver.window_handles[windowIdx])
+
+
+def openTab(driver: webdriver, url: str, name: str):
+    driver.execute_script("window.open('" + url + "', '" + name + "')")
+    driver.switch_to.window(name)
