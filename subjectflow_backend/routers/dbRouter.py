@@ -14,8 +14,10 @@ router = APIRouter(prefix="/db")
     response_model=Subject,
 )
 async def getSubject(request: Request, code: str):
-    subject: Subject = subjectApi.getSubjectByCode(db=request.app.database, code=code)
-
+    subject: Subject = await subjectApi.getSubjectByCode(
+        db=request.app.database, code=code
+    )
+    print(subject)
     if subject is not None:
         return subject
 
@@ -28,6 +30,6 @@ async def getSubject(request: Request, code: str):
     status_code=status.HTTP_201_CREATED,
 )
 async def postSubject(request: Request, subject: Subject):
-    res = subjectApi.postSubject(db=request.app.database, subject=subject)
+    res = await subjectApi.postSubject(db=request.app.database, subject=subject)
 
     return res
