@@ -7,3 +7,6 @@ class Subject(BaseModel):
     name: str
     code: str
     reqOptions: List[Tuple[str, Subject]] = []
+
+class UpdateSubject(BaseModel):
+    reqOptions: List[Tuple[str, Subject]]
