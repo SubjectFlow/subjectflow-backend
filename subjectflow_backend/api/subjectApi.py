@@ -22,11 +22,11 @@ async def postSubject(db: database, subject: Subject):
 
 
 async def postSubjects(db: database, subjects: list[Subject]):
-    res = []
-    for subject in subjects:
-        res.append(await postSubject(db=db, subject=subject))
-
-    return res
+    docs = map(lambda x: jsonable_encoder(x), subjects)
+    try:
+        return await db[SUB_COLL].insert_many(docs)
+    except:
+        return ERR
 
 
 async def getSubjectByCode(db: database, code: str):

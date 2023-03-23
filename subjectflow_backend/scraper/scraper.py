@@ -5,10 +5,18 @@ from selenium.webdriver.remote.webelement import WebElement
 from subjectflow_backend.scraper.utils import ctrlClick, closeTab, switchTab, openTab
 from selenium.webdriver.common.action_chains import ActionChains
 from concurrent.futures import ThreadPoolExecutor, wait
+from dotenv import dotenv_values
+from pymongo import MongoClient
+from subjectflow_backend.models.subject import Subject
+import subjectflow_backend.api.subjectApi as subjectApi
 import time
+import asyncio
 
 HANDBOOK = "https://handbook.unimelb.edu.au/"
 YEAR = "2023"
+config = dotenv_values(".env")
+db = MongoClient(config["MONGO_CONNECTION_STRING"])[config["DB_NAME"]]
+
 chrome_options = Options()
 chrome_options.headless = True
 chrome_options.add_argument("log-level=2")
@@ -16,13 +24,11 @@ chrome_options.add_argument("--window-size=1920,1080")
 
 
 def scrape():
-    print(__name__)
-    postAllSubjects()
-    # for element in driver.find_elements(By.CLASS_NAME, "search-result-item__code"):
-    #     handleSubject(code=element.text)
+    asyncio.run(postAllSubjects())
 
 
-def postAllSubjects():
+async def postAllSubjects():
+    await subjectApi.dropAllSubjects(db=db)
     futures = []
     driver = webdriver.Chrome(options=chrome_options)
     pages = getNumPages(driver=driver)
@@ -37,27 +43,16 @@ def postAllSubjects():
 def postSubjectsOnPage(page: int):
     driver = webdriver.Chrome(options=chrome_options)
     driver.get(getHandbookPageUrl(page=page))
+    subjects: list(Subject) = []
     for element in driver.find_elements(By.CLASS_NAME, "search-result-item__name"):
-        print(element.find_element(By.TAG_NAME, "h3").text)
+        subject: Subject = Subject(
+            name=element.find_element(By.TAG_NAME, "h3").text,
+            code=element.find_element(By.TAG_NAME, "span").text,
+        )
+        subjects.append(subject)
 
+    asyncio.run(subjectApi.postSubjects(db, subjects))
     driver.quit()
-
-
-# def handleSubject(code: str):
-#     originalTabHandle = driver.current_window_handle
-#     openTab(
-#         driver=driver,
-#         url=HANDBOOK
-#         + "/"
-#         + YEAR
-#         + "/subjects/"
-#         + code
-#         + "/eligibility-and-requirements",
-#         name=code,
-#     )
-#     time.sleep(2)
-#     closeTab(driver=driver)
-#     driver.switch_to.window(originalTabHandle)
 
 
 def getHandbookPageUrl(page: int) -> str:
