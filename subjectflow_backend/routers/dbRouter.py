@@ -17,7 +17,6 @@ async def getSubject(request: Request, code: str):
     subject: Subject = await subjectApi.getSubjectByCode(
         db=request.app.database, code=code
     )
-    print(subject)
     if subject is not None:
         return subject
 
