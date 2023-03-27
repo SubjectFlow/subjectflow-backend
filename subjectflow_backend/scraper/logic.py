@@ -10,7 +10,7 @@ class LogicOp(Enum):
 
 class Expr(BaseModel):
     operator: LogicOp
-    operands: tuple[Expr | Literal, Expr | Literal]
+    operands: tuple[Expr | Literal | None, Expr | Literal | None]
 
 
 class Literal(BaseModel):
@@ -22,6 +22,7 @@ Expr.update_forward_refs()
 
 
 def toDNF(expr: Expr | Literal) -> list[list[Literal]]:
+    # print('in toDNF')
     if isinstance(expr, Literal):
         return [[expr]]
     elif expr.operator == LogicOp.OR:
