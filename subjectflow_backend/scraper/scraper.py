@@ -65,7 +65,7 @@ def postPrereqsOnPage(page: int):
     driver1 = webdriver.Chrome(options=chrome_options)
     driver.get(getHandbookPageUrl(page=page))
     updateInfo: list[tuple[str, list[UpdateSubject]]] = []
-    # getPrereqs(driver=driver1, code='CHEN30015')
+    # getPrereqs(driver=driver1, code='mgmt90244')
     for element in driver.find_elements(By.CLASS_NAME, "search-result-item__header"):
         try:
             element.find_element(By.CLASS_NAME, "search-result-item__flag--highlight")

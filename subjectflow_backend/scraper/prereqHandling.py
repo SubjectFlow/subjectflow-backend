@@ -6,6 +6,7 @@ from subjectflow_backend.scraper.scrapingConstants import HANDBOOK, YEAR
 from selenium import webdriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.by import By
+from dataclasses import dataclass
 import queue
 
 
@@ -21,43 +22,62 @@ class OpPrecedence(Enum):
         return NotImplemented
 
 
+class prereqScrapingFlags:
+    andTableMode: bool = True
+    readingList: bool = False
+
+
+@dataclass
+class processTextRes:
+    content: Expr | Literal
+    firstInList: bool = False
+    precedence: OpPrecedence | None = None
+
+
 def getPrereqs(driver: webdriver, code: str):
-    print("in " + code)
+    print("\nin " + code)
     driver.get(HANDBOOK + f"{YEAR}/subjects/{code}/eligibility-and-requirements")
     prereqs = driver.find_element(By.ID, "prerequisites")
-    createPrereqLogic(elements=prereqs.find_elements(By.XPATH, "*"))
-    return 1
-
-
-def createPrereqLogic(elements: list[WebElement]):
+    elements = prereqs.find_elements(By.XPATH, "*")
     # print("creating")
     pq = queue.PriorityQueue()
     dll = DLList()
-    allFlag = [True]
+    flags = prereqScrapingFlags()
+    listCondition: Literal | None = None
     # print(len(elements))
     try:
         for i in range(len(elements)):
             # print(i)
             if elements[i].tag_name == "table":
-                # print(allFlag[0])
-                dll.append(generateTableExpr(elements[i], allFlag))
+                # print(flags[0])
+                dll.append(generateTableExpr(elements[i], flags))
                 # print("post table")
             else:
-                res = processText(elements[i].text, allFlag)
-                # print("post process")
-                if res[1] is not None:
-                    # print("pre append")
-                    node = dll.append(res[1])
-                    # print("post append")
-                    if isinstance(res[1], Expr):
-                        # print("pre pq")
-                        pq.put((res[0], i, node))
-                        # print("post pq")
+                res = processText(elements[i].text, flags)
+                if flags.readingList and isinstance(res.content, Literal):
+                    if res.firstInList:
+                        listCondition = res.content
+                    else:
+                        listCondition.content += "\n" + res.content.content
+                else:
+                    if listCondition is not None:
+                        dll.append(listCondition)
+                        listCondition = None
+                    if res is not None:
+                        # print("pre append")
+                        node = dll.append(res.content)
+                        # print("post append")
+                        if isinstance(res.content, Expr):
+                            # print("pre pq")
+                            pq.put((res.precedence, i, node))
+                            # print("post pq")
                 # print("after pq if")
 
-        # print("post parsing")
+        if listCondition is not None:
+            dll.append(listCondition)
+            listCondition = None
 
-        # print("dll size: " + str(dll.size))
+        print("pre loop dll size: " + str(dll.size))
         if dll.size != 0:
             while not pq.empty():
                 curr = pq.get()[2]
@@ -67,46 +87,71 @@ def createPrereqLogic(elements: list[WebElement]):
                 dll.remove(curr.prev)
                 dll.remove(curr.next)
 
-            # print('post loop dll size: ' +  str(dll.size))
+            print("post loop dll size: " + str(dll.size))
             print(toDNF(dll.head.data))
     except Exception as e:
         print(e)
+    return 1
 
 
-def processText(text: str, all: list[bool]):
+def processText(text: str, flags: prereqScrapingFlags) -> processTextRes | None:
     # print("processing text")
     text = text.lower().strip()
     # print(text)
 
-    if "any of" in text or "one of" in text:
-        # print('setting false')
-        all[0] = False
-        # print("any case")
-        return (None, None)
+    if any(x in text for x in ("admission", "point", "provide")):
+        # print("literal case")
+        return processTextRes(content=Literal(code=False, content=text))
+    elif "any of" in text or "one of" in text:
+        if "admission" in text:
+            # print("setting reading list")
+            flags.readingList = True
+            return processTextRes(
+                precedence=None,
+                content=Literal(code=False, content=text),
+                firstInList=True,
+            )
+        else:
+            # print('setting false')
+            flags.readingList = False
+            flags.andTableMode = False
+            # print("any case")
+            return None
     elif "both of" in text or "all of" in text:
-        all[0] = True
+        flags.readingList = False
+        flags.andTableMode = True
         # print("all case")
-        return (None, None)
+        return None
     elif text == "and":
         # print("and case")
-        return (OpPrecedence.AND, Expr(operator=LogicOp.AND, operands=(None, None)))
+        flags.readingList = False
+        return processTextRes(
+            precedence=OpPrecedence.AND,
+            content=Expr(operator=LogicOp.AND, operands=(None, None)),
+        )
     elif text == "or":
         # print("or case")
-        return (OpPrecedence.OR, Expr(operator=LogicOp.OR, operands=(None, None)))
-    elif any(x in text for x in ("admission", "point", "provide")):
-        # print("literal case")
-        return (None, Literal(code=False, content=text))
+        flags.readingList = False
+        return processTextRes(
+            precedence=OpPrecedence.OR,
+            content=Expr(operator=LogicOp.OR, operands=(None, None)),
+        )
     elif "option" in text and "option 1" not in text and "options" not in text:
         # print("option case")
-        return (OpPrecedence.OPTION, Expr(operator=LogicOp.OR, operands=(None, None)))
+        flags.readingList = False
+        return processTextRes(
+            precedence=OpPrecedence.OPTION,
+            content=Expr(operator=LogicOp.OR, operands=(None, None)),
+        )
+    elif flags.readingList:
+        return processTextRes(content=Literal(code=False, content=text))
 
-    # print("returning (none, none)")
-    return (None, None)
+    return None
 
 
-def generateTableExpr(table: WebElement, all: list[bool]):
+def generateTableExpr(table: WebElement, flags: prereqScrapingFlags):
     # print("generating")
-    if all[0]:
+    if flags.andTableMode:
         op = LogicOp.AND
     else:
         op = LogicOp.OR
@@ -134,5 +179,5 @@ def generateTableExpr(table: WebElement, all: list[bool]):
             operator=op, operands=(currExpr, Literal(code=True, content=codes[i].text))
         )
 
-    all[0] = True
+    flags.andTableMode = True
     return currExpr
