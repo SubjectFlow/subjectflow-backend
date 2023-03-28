@@ -9,6 +9,7 @@ from subjectflow_backend.scraper.scrapingConstants import HANDBOOK, YEAR
 from subjectflow_backend.scraper.prereqHandling import getPrereqs
 import subjectflow_backend.api.subjectApi as subjectApi
 import asyncio
+import time
 
 
 config = dotenv_values(".env")
@@ -21,9 +22,11 @@ chrome_options.add_argument("--window-size=1920,1080")
 
 
 def scrape():
+    startTime = time.time()
     pages = getNumPages()
     # asyncio.run(postAllSubjects(pages=pages))
     asyncio.run(postAllPrereqs(pages=pages))
+    print("--- %s seconds ---" % (time.time() - startTime))
 
 
 async def postAllSubjects(pages: int):
@@ -58,6 +61,10 @@ async def postAllPrereqs(pages: int):
             futures.append(executor.submit(postPrereqsOnPage, i))
 
     wait(futures)
+    count = 0
+    for i in futures:
+        count += i.result()
+    print(count)
 
 
 def postPrereqsOnPage(page: int):
@@ -65,18 +72,20 @@ def postPrereqsOnPage(page: int):
     driver1 = webdriver.Chrome(options=chrome_options)
     driver.get(getHandbookPageUrl(page=page))
     updateInfo: list[tuple[str, list[UpdateSubject]]] = []
-    # getPrereqs(driver=driver1, code='mgmt90244')
+    count = 0
+    # getPrereqs(driver=driver1, code='PHYS90008')
     for element in driver.find_elements(By.CLASS_NAME, "search-result-item__header"):
         try:
             element.find_element(By.CLASS_NAME, "search-result-item__flag--highlight")
             code: str = element.find_element(
                 By.CLASS_NAME, "search-result-item__code"
             ).text
-            updateInfo.append((code, getPrereqs(driver=driver1, code=code)))
+            count += getPrereqs(driver=driver1, code=code)
         except:
             pass
 
     driver.quit()
+    return count
 
 
 def getHandbookPageUrl(page: int) -> str:
@@ -90,10 +99,10 @@ def getNumPages() -> int:
     driver = webdriver.Chrome(options=chrome_options)
     driver.get(HANDBOOK + "subjects")
     pages = 1
-    # pages = int(
-    #     driver.find_element(By.CLASS_NAME, "search-results__paginate")
-    #     .find_element(By.TAG_NAME, "span")
-    #     .text[3:]
-    # )
+    pages = int(
+        driver.find_element(By.CLASS_NAME, "search-results__paginate")
+        .find_element(By.TAG_NAME, "span")
+        .text[3:]
+    )
     driver.quit()
     return pages

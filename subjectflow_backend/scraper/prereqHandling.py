@@ -8,6 +8,7 @@ from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.by import By
 from dataclasses import dataclass
 import queue
+import traceback
 
 
 @total_ordering
@@ -44,30 +45,35 @@ def getPrereqs(driver: webdriver, code: str):
     dll = DLList()
     flags = prereqScrapingFlags()
     listCondition: Literal | None = None
+    post = 0
     # print(len(elements))
     try:
         for i in range(len(elements)):
-            # print(i)
+            # print(i, " readList = " + str(flags.readingList))
+            # print(i, "list condition:", listCondition)
             if elements[i].tag_name == "table":
                 # print(flags[0])
+                listCondition = None
                 dll.append(generateTableExpr(elements[i], flags))
                 # print("post table")
             else:
                 res = processText(elements[i].text, flags)
                 if flags.readingList and isinstance(res.content, Literal):
-                    if res.firstInList:
+                    if listCondition is None:
                         listCondition = res.content
                     else:
                         listCondition.content += "\n" + res.content.content
                 else:
                     if listCondition is not None:
+                        # print("readingList append")
                         dll.append(listCondition)
                         listCondition = None
                     if res is not None:
                         # print("pre append")
                         node = dll.append(res.content)
-                        # print("post append")
+                        # print("appended", res.content)
                         if isinstance(res.content, Expr):
+                            flags.readingList = True
                             # print("pre pq")
                             pq.put((res.precedence, i, node))
                             # print("post pq")
@@ -77,7 +83,7 @@ def getPrereqs(driver: webdriver, code: str):
             dll.append(listCondition)
             listCondition = None
 
-        print("pre loop dll size: " + str(dll.size))
+        # print("pre loop dll size: " + str(dll.size))
         if dll.size != 0:
             while not pq.empty():
                 curr = pq.get()[2]
@@ -87,11 +93,16 @@ def getPrereqs(driver: webdriver, code: str):
                 dll.remove(curr.prev)
                 dll.remove(curr.next)
 
-            print("post loop dll size: " + str(dll.size))
-            print(toDNF(dll.head.data))
+            # print("post loop dll size: " + str(dll.size))
+            # print(toDNF(dll.head.data))
+            # print(dll.tail.data)
+        post = 0 if dll.size <= 1 else 1
     except Exception as e:
         print(e)
-    return 1
+        traceback.print_exc()
+        return 1
+
+    return post
 
 
 def processText(text: str, flags: prereqScrapingFlags) -> processTextRes | None:
@@ -99,11 +110,8 @@ def processText(text: str, flags: prereqScrapingFlags) -> processTextRes | None:
     text = text.lower().strip()
     # print(text)
 
-    if any(x in text for x in ("admission", "point", "provide")):
-        # print("literal case")
-        return processTextRes(content=Literal(code=False, content=text))
-    elif "any of" in text or "one of" in text:
-        if "admission" in text:
+    if "any of" in text or "one of" in text:
+        if "admission" in text or "points" in text:
             # print("setting reading list")
             flags.readingList = True
             return processTextRes(
@@ -136,6 +144,9 @@ def processText(text: str, flags: prereqScrapingFlags) -> processTextRes | None:
             precedence=OpPrecedence.OR,
             content=Expr(operator=LogicOp.OR, operands=(None, None)),
         )
+    elif any(x in text for x in ("admission", "point", "provide")):
+        # print("literal case")
+        return processTextRes(content=Literal(code=False, content=text))
     elif "option" in text and "option 1" not in text and "options" not in text:
         # print("option case")
         flags.readingList = False
@@ -144,6 +155,7 @@ def processText(text: str, flags: prereqScrapingFlags) -> processTextRes | None:
             content=Expr(operator=LogicOp.OR, operands=(None, None)),
         )
     elif flags.readingList:
+        # print('here')
         return processTextRes(content=Literal(code=False, content=text))
 
     return None
@@ -151,6 +163,7 @@ def processText(text: str, flags: prereqScrapingFlags) -> processTextRes | None:
 
 def generateTableExpr(table: WebElement, flags: prereqScrapingFlags):
     # print("generating")
+    flags.readingList = False
     if flags.andTableMode:
         op = LogicOp.AND
     else:
