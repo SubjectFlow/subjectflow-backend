@@ -2,13 +2,14 @@ from __future__ import annotations
 from typing import Optional, List, Tuple
 from pydantic import BaseModel, Field
 from subjectflow_backend.models.pyObjectId import PyObjectId
+from subjectflow_backend.models.code import Code
 from bson import ObjectId
 
 
 class Subject(BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     name: str
-    code: str
+    code: Code
     reqOptions: List[Req] = []
 
     class Config:
